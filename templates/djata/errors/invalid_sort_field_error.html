@@ -1,0 +1,19 @@
+{% extends "djata/errors/base.html" %}
+{% block explanation %}
+<p>
+    The following sort field(s) were invalid:
+    <ul>
+    {% for field in error.invalids %}
+        <li><tt>{{field|escape}}</tt></li>
+    {% endfor %}
+    </ul>
+</p>
+<p>
+    The following sort fields are valid:
+    <ul>
+    {% for field in error.valids %}
+        <li><tt>{{field|escape}}</tt></li>
+    {% endfor %}
+    </ul>
+</p>
+{% endblock %}

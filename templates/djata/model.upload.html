@@ -1,0 +1,14 @@
+{% extends "djata/base.html" %}
+{% block content %}
+    <input type="file" name="file">
+    <form action="{{url.action}}=write" name="format">
+        <select name="format">
+        {% for format in formats %}
+            <option value="{{format|escape}}">
+                {{format|escape}}
+            </option>
+        {% endfor %}
+        </select>
+    </form>
+    <input type="submit" value="Upload">
+{% endblock %}

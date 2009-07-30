@@ -1,0 +1,47 @@
+{% if page %}{% if page.has_other_pages %}
+<span class="paginate">
+    <form class="unstyled" action="{{url}}" method="GET">
+
+        <span class="paginate_head">
+        {% if page.has_previous %}
+            <a class="label first" href="{{url.page}}=1"><span>first</span></a>
+            <a class="label previous" href="{{url.page}}={{page.previous_page_number}}"><span>previous</span></a>
+        {% else %}
+            <span class="label first disabled"></span>
+            <span class="label previous disabled"></span>
+        {% endif %}
+        </span>
+
+        <span class="paginate_body">
+        {% for page_group in page_groups %}
+            {% for number in page_group %}
+                {% ifequal number page.number %}
+                    <b class="active">{{number}}</b>
+                {% else %}
+                    <a href="{{url.page}}={{number}}">{{number}}</a>
+                {% endifequal %}
+            {% endfor %}
+            {% if not forloop.last %}
+            &hellip;
+            {% endif %}
+        {% endfor %}
+        </span>
+
+        <span class="paginate_tail">
+        {% if page.has_next %}
+            <a class="label next" href="{{url.page}}={{page.next_page_number}}"><span>next</span></a>
+            <a class="label last" href="{{url.page}}={{paginator.num_pages}}"><span>last</span></a>
+        {% else %}
+            <span class="label next disabled"></span>
+            <span class="label last disabled"></span>
+        {% endif %}
+        </span>
+
+        <span class="paginate_skip">
+            <input type="text" name="page" id="id_page_number_input">
+            <input type="submit" value="go">
+        </span>
+
+    </form>
+</span>
+{% endif %}{% endif %}

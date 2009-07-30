@@ -1,0 +1,8 @@
+{% extends "djata/look_and_feel.html" %}
+{% block title %}{{title|escape}}{% endblock %}
+{% block content %}
+    <h1>{{title|escape}}</h1>
+    <h2 class="subtitle">{{error|escape}}</h2>
+    {% block explanation %}
+    {% endblock %}
+{% endblock %}

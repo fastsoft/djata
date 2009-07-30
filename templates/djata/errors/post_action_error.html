@@ -1,0 +1,12 @@
+{% extends "djata/errors/base.html" %}
+{% block explanation %}
+<p>
+    You must specify an action in the query string 
+    for the HTTP POST method.  This view supports:
+    <ul>
+    {% for action in error.actions %}
+        <li><tt>{{action|escape}}</tt></li>
+    {% endfor %}
+    </ul>
+</p>
+{% endblock %}

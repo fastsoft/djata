@@ -1,0 +1,8 @@
+<table class="record" border="1">
+{% for item in items %}
+    <tr>
+        <th>{{item.name|escape}}:</th>
+        <td>{{item.value|default_if_none:""|escape|default:"&nbsp;"}}</td>
+    </tr>
+{% endfor %}
+</table>

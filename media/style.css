@@ -1,0 +1,93 @@
+
+/* layout */
+
+    body table {
+        border-collapse: collapse;
+    }
+
+    table.record td, table.record th,
+    table.table td, table.table th {
+        border: solid 1px #bbbbbb;
+    }
+
+    table.form td, table.form th,
+    table.record td, table.record th,
+    table.table td, table.table th {
+        padding: 2px 6px;
+        white-space: nowrap;
+        line-height: 1.8em;
+    }
+
+    table.form tr th,
+    table.record tr th {
+        text-align: right;
+        vertical-align: top;
+    }
+
+    table.form tr td,
+    table.record tr td {
+        vertical-align: top;
+    }
+
+
+    body table.table tr th * {
+        color: #3333ff;
+    }
+
+    body table.table tr th {
+        text-shadow: #888888 1px 1px;
+        background-image: url(th.gif);
+        background-repeat: repeat-x;
+        background-color: #bbbbbb;
+        color: #ffffff;
+    }
+
+    p.controls {
+        padding: 2px 6px;
+        white-space: nowrap;
+        line-height: 1.8em;
+        text-shadow: #888888 1px 1px;
+        background-image: url(th.gif);
+        background-repeat: repeat-x;
+        background-color: #bbbbbb;
+        color: #ffffff;
+        border: solid 1px #bbbbbb;
+    }
+
+    p.controls a {
+        color: #ffffff;
+        font-weight: bold;
+        text-decoration: none;
+    }
+
+/* style */
+
+    body {
+        font-family: Lucida Grande, Verdana, sans-serif;
+        font-size: 12px;
+    }
+
+    p, td, th {
+        font-size: 12px;
+    }
+
+    form {
+        display: inline;
+        margin: 0;
+        padding: 0;
+    }
+
+    input[type=text],
+    textarea {
+        border: inset 1px;
+        padding: 2px 6px;
+    }
+
+    a img {
+        border: none;
+    }
+
+    #id_page_number_input {
+        width: 3ex;
+    }
+

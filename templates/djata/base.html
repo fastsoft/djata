@@ -1,0 +1,11 @@
+<html>
+    <head>
+        {% block head %}
+        <title>{% block title %}{{title}}{% endblock %}</title>
+        {% block meta %}{% endblock %}
+        {% endblock %}
+    </head>
+    <body>
+        {% block content %}{{content}}{% endblock %}
+    </body>
+</html>

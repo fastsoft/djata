@@ -1,0 +1,8 @@
+{% extends "djata/base.html" %}
+{% block content %}
+<p>Please verify that you would like to delete this {{model}}.</p>
+<p><ul>
+    <li><a href="{{url.action}}=delete">delete</a></li>
+    <li><a href="{{url.format}}=html">cancel</a></li>
+</ul></p>
+{% endblock %}

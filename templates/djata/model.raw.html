@@ -1,0 +1,22 @@
+<table class="table" border="1">
+    <tr>
+        {% for column_name in column_names %}
+        <th>{{column_name}}</th>
+        {% endfor %}
+    </tr>
+    {% for row in table %}
+    <tr>
+        {% for cell in row %}
+        <td>
+            {% if cell.url %}
+                <a href="{{cell.url}}">
+                {{cell|default_if_none:""|escape|default:"&nbsp;"}}
+                </a>
+            {% else %}
+                {{cell|default_if_none:""|escape|default:"&nbsp;"}}
+            {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</table>

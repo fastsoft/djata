@@ -1,0 +1,10 @@
+{% extends "djata/errors/base.html" %}
+{% block explanation %}
+<p>The following requested fields in your <tt>select</tt>
+query-string or JSON POST argument do not exist:</p>
+<ul>
+    {% for field in error.fields %}
+    <li><tt>{{field|escape}}</tt></li>
+    {% endfor %}
+</ul>
+{% endblock %}

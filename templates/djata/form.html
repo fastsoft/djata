@@ -1,0 +1,14 @@
+{% extends "djata/look_and_feel.html" %}
+{% block content %}
+    <form action="{{request.path}}?add&parser=urlencoded" method="post">
+    <table class="form">
+        {{form.as_table}}
+        <tr>
+            <th></th>
+            <td>
+                <input type="submit" value="Add">
+            </td>
+        </tr>
+    </table>
+    </form>
+{% endblock %}

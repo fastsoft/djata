@@ -1,0 +1,45 @@
+
+table.chart {
+    display: block;
+    padding: 0;
+    border: none;
+}
+
+table.chart > tbody {
+    display: block;
+    padding: 0;
+    margin: 0;
+    scroll: auto;
+}
+
+table.chart > tbody > tr {
+    display: block;
+    padding: 0;
+    margin: 0;
+    border: none;
+    float: left;
+}
+
+table.chart > tbody > tr > th {
+    display: block;
+    padding: 0;
+    margin: 0;
+    border: none;
+}
+
+table.chart > tbody > tr > td {
+    display: block;
+    padding: 0;
+    margin: 0;
+    background-color: #7777ff;
+    border: none;
+}
+
+table.chart > tbody > tr > th > span {
+    display: none;
+    white-space: nowrap;
+}
+
+table.chart > tbody > tr > td > span {
+}
+

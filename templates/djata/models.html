@@ -1,0 +1,9 @@
+{% extends "djata/look_and_feel.html" %}
+{% block content %}
+    {% include "djata/models.raw.html" %}
+    {% block paginate %}
+    <p class="paginate">
+        {% include "djata/paginate.html" %}   
+    </p>
+    {% endblock %}
+{% endblock %}

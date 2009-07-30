@@ -1,0 +1,11 @@
+{% extends "djata/error/base.html" %}
+{% block title %}Error - POST without specifying an action{% endblock %}
+{% block content %}
+    <p>Using the HTTP POST method, you must also specify an action
+    in your query string.  You may specify one of:</p>
+    <ul>
+    {% for action in actions %}
+        <li>{{action}}</li>
+    {% endfor %}
+    </ul>
+{% endblock %}

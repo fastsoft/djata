@@ -1,0 +1,9 @@
+{% extends "djata/look_and_feel.html" %}
+{% block meta %}
+    <!--[if !IE]>-->
+    <style>@import url({{settings.DJATA_MEDIA_URL}}/chart.css);</style>
+    <!--<![endif]-->
+{% endblock %}
+{% block content %}
+    {% include "djata/model.raw.chart.html" %}
+{% endblock %}

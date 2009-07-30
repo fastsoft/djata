@@ -1,0 +1,16 @@
+<table class="form chart" border="1" data="{{max_y}}">
+    {% for point in chart %}
+    <tr style="height: {{height}}px; width: {{column_width}}px">
+        <th
+            data="{{point.x|escape}}"
+            style="height: {{point.top_height}}px; width: {{column_width}}px">
+            <span>{{point.x|escape}}</span>
+        </th>
+        <td
+            data="{{point.y|escape}}"
+            style="height: {{point.bottom_height}}px; width: {{column_width}}px">
+            <span>{{point.y|escape}}</span>
+        </th>
+    </tr>
+    {% endfor %}
+</table>
