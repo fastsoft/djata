@@ -71,7 +71,7 @@ capture groups in your URL patterns:
 - ``format`` the extension corresponding to either the format of the
   desired GET response or the format of a POST request.  If no format is
   supplied to the view, it uses either a reasonable default or content
-  negotiation[2]_.
+  negotiation [2]_.
 
 
 .. [1] at the time of this writing, ``verbose_name`` and
