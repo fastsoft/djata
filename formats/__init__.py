@@ -1,5 +1,5 @@
 
-from djata.orderedclass import OrderedClass, OrderedProperty, OrderedMetaclass
+from djata.python.orderedclass import OrderedClass, OrderedProperty, OrderedMetaclass
 from django.http import HttpResponse
 from django.template import RequestContext, loader
 from djata.python.names import *

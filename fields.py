@@ -1,5 +1,5 @@
 
-from djata.orderedclass import *
+from djata.python.orderedclass import *
 
 def map_field(field):
     return field
