@@ -16,6 +16,10 @@ becomes your new base-line for Django views, with support across
 the board for the comprehensive API options you want but never
 have time to write.
 
+(If you are viewing this page on Github, you will need to visit the `canonical
+location of this file <djata/blob/master/README.rst>`_ for the relative
+hyperlinks to function properly.)
+
 - `Quick Start Guide <docs/quick-start.rst>`_
 - `Configuring Djata URLs <docs/urls.rst>`_
 - `Configuring and Creating Views <docs/views.rst>`_
