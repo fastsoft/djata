@@ -35,6 +35,20 @@ documentation <views.rst>`_ for more information on customizing views.
             verbose_name = 'bar'
             verbose_name_plural = 'bars'
 
+Alternately, if you would just like to automatically generate a Djata view
+for every model in your models file, you can use the ``views_from_models``
+function
+
+``example/views.py``::
+
+    from djata.views import *
+    import example.models as models
+    views = views_from_models(models)
+
+You can blend both approaches by customizing particular models after you
+construct the views object.  If you do not create a views object, it will be
+created automatically by the first view class you declare.
+
 At the time of this writing, recent versions of Django expose the model's
 ``verbose_name`` and ``verbose_name_plural`` (that Django uses for URLs of
 single and multiple objects) as some kind of proxy object that is not

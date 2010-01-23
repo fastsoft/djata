@@ -30,6 +30,7 @@ from urllib2 import unquote
 from os.path import join
 from itertools import chain
 
+from django.db.models import Model
 from django.template import RequestContext, loader, TemplateDoesNotExist
 from django.http import HttpResponse, HttpResponseServerError, HttpResponseRedirect, HttpResponseBadRequest, HttpResponseNotAllowed
 from django.core.exceptions import ObjectDoesNotExist, FieldError
@@ -53,7 +54,7 @@ class ViewMetaclass(OrderedMetaclass):
     def __init__(self, name, bases, attys):
         super(ViewMetaclass, self).__init__(name, bases, attys)
 
-        if not (
+        if (
             self.__name__ == 'View' or
             self.__name__ == 'ViewBase' or (
                 hasattr(self, 'Meta') and 
@@ -61,134 +62,145 @@ class ViewMetaclass(OrderedMetaclass):
                 self.Meta.abstract
             )
         ):
+            return
 
-            # discover the module that contains the model view
+        # discover the module that contains the model view
+        if self.__module__ is None:
+            module = None
+        else:
             module = self.module = __import__(
                 self.__module__,
                 {}, {}, [self.__name__]
             )
 
-            if hasattr(self, 'Meta'):
-                class Meta(ViewOptions):
-                    pass
-                for name, value in vars(self.Meta).items():
-                    if not name.startswith('__'):
-                        setattr(Meta, name, value)
-            else:
-                self.Meta = ViewOptions
-            meta = self.meta = self.Meta()
-            meta.module = module
+        if hasattr(self, 'Meta'):
+            class Meta(ViewOptions):
+                pass
+            for name, value in vars(self.Meta).items():
+                if not name.startswith('__'):
+                    setattr(Meta, name, value)
+        else:
+            self.Meta = ViewOptions
+        meta = self.meta = self.Meta()
+        meta.module = module
 
-            meta.name = self.__name__
-            # default to True if not yet defined
-            meta.visible = getattr(meta, 'visible', True)
+        meta.name = self.__name__
+        # default to True if not yet defined
+        meta.visible = getattr(meta, 'visible', True)
 
-            # attempt to grab a model from the containing module's "models"
-            #  value
-            if not hasattr(meta, 'model') and hasattr(module, 'models'):
-                model = meta.model = getattr(module.models, self.__name__)
+        # attempt to grab a model from the containing module's "models"
+        #  value
+        if not hasattr(meta, 'model') and hasattr(module, 'models'):
+            model = meta.model = getattr(module.models, self.__name__)
 
-            # objects
+        # objects
 
-            # the user naturally has the option of defining their
-            #  own objects and fields class values, but if they have
-            #  a model, we use it as a source of those properties.
-            if hasattr(meta, 'model'):
-                model = meta.model
-                if not hasattr(self, 'objects'):
-                    self.objects = model.objects
-                if not hasattr(self, 'fields'):
-                    fields = model._meta._fields()
-                if not hasattr(meta, 'verbose_name'):
-                    meta.verbose_name = str(model._meta.verbose_name)
-                if not hasattr(meta, 'verbose_name_plural'):
-                    meta.verbose_name_plural = str(model._meta.verbose_name_plural)
-            else:
-                if not hasattr(meta, 'verbose_name'):
-                    meta.verbose_name = lower(self.__name__, '-')
-                if not hasattr(meta, 'verbose_name_plural'):
-                    meta.verbose_name_plural = meta.verbose_name + 's'
-
+        # the user naturally has the option of defining their
+        #  own objects and fields class values, but if they have
+        #  a model, we use it as a source of those properties.
+        if hasattr(meta, 'model'):
+            model = meta.model
             if not hasattr(self, 'objects'):
-                raise Exception("View %s does not define its 'objects' "
-                    "property nor provide a model to obtain them from" % self)
+                self.objects = model.objects
+            if not hasattr(self, 'fields'):
+                fields = model._meta._fields()
             if not hasattr(meta, 'verbose_name'):
-                raise Exception("Model view has no verbose name")
+                meta.verbose_name = str(model._meta.verbose_name)
             if not hasattr(meta, 'verbose_name_plural'):
-                meta.verbose_name_plural = '%ss' % meta.verbose_name
+                meta.verbose_name_plural = str(model._meta.verbose_name_plural)
+        else:
+            if not hasattr(meta, 'verbose_name'):
+                meta.verbose_name = lower(self.__name__, '-')
+            if not hasattr(meta, 'verbose_name_plural'):
+                meta.verbose_name_plural = meta.verbose_name + 's'
+
+        if not hasattr(self, 'objects'):
+            raise Exception("View %s does not define its 'objects' "
+                "property nor provide a model to obtain them from" % self)
+        if not hasattr(meta, 'verbose_name'):
+            raise Exception("Model view has no verbose name")
+        if not hasattr(meta, 'verbose_name_plural'):
+            meta.verbose_name_plural = '%ss' % meta.verbose_name
 
 
-            # fields
+        # fields
 
-            exclude_fields = set(getattr(meta, 'exclude_fields', ()))
+        exclude_fields = set(getattr(meta, 'exclude_fields', ()))
+        self.fields = [
+            field for field in fields
+            if field.name not in exclude_fields
+        ]
+        self.fields.extend([
+            value.dub(self, name)
+            for (name, value) in self._properties
+            if isinstance(value, Field)
+        ])
+        if hasattr(meta, 'fields'):
+            fields = dict(
+                (field.name, field)
+                for field in self.fields
+            )
             self.fields = [
-                field for field in fields
-                if field.name not in exclude_fields
+                fields[field_name]
+                for field_name in meta.fields
             ]
-            self.fields.extend([
+
+        # build dictionaries for looking up properties
+        for prefix, property in (
+            ('action', 'actions'),
+            ('method', 'methods'),
+        ):
+            pairs = [
+                (name.split('_', 1)[1], value)
+                for base in self.__mro__[::-1]
+                for name, value in vars(base).items()
+                if name.startswith('%s_' % prefix) and
+                name.split('_', 1)[1] not in
+                getattr(meta, 'exclude_%s' % property, ())
+            ]
+            setattr(self, '_%s' % property, [name for name, value in pairs])
+            setattr(self, '_%s_lookup' % property, dict(pairs))
+
+        # formatters
+        for variable, type in (
+            ('model_formats', ModelFormat),
+            ('object_formats', ObjectFormat),
+            ('model_parsers', ModelParser),
+            ('object_parsers', ObjectParser),
+            ('model_pages', ModelPage),
+            ('object_pages', ObjectPage),
+        ):
+            exclude = getattr(meta, 'exclude_%s' % variable, ())
+            pairs = [
                 value.dub(self, name)
-                for (name, value) in self._properties
-                if isinstance(value, Field)
-            ])
-            if hasattr(meta, 'fields'):
-                fields = dict(
-                    (field.name, field)
-                    for field in self.fields
-                )
-                self.fields = [
-                    fields[field_name]
-                    for field_name in meta.fields
-                ]
+                for name, value in self._classes
+                if issubclass(value, type)
+            ]
+            setattr(self, '_%s' % variable, [name for name, value in pairs])
+            setattr(self, '_%s_lookup' % variable, dict(pairs))
 
-            # build dictionaries for looking up properties
-            for prefix, property in (
-                ('action', 'actions'),
-                ('method', 'methods'),
-            ):
-                pairs = [
-                    (name.split('_', 1)[1], value)
-                    for base in self.__mro__[::-1]
-                    for name, value in vars(base).items()
-                    if name.startswith('%s_' % prefix) and
-                    name.split('_', 1)[1] not in
-                    getattr(meta, 'exclude_%s' % property, ())
-                ]
-                setattr(self, '_%s' % property, [name for name, value in pairs])
-                setattr(self, '_%s_lookup' % property, dict(pairs))
+        # index
+        self.index = model._meta.pk
+        if hasattr(meta, 'index'):
+            self.index, ingore, ignore, ignore = \
+                    model._meta.get_field_by_name(meta.index)
 
-            # formatters
-            for variable, type in (
-                ('model_formats', ModelFormat),
-                ('object_formats', ObjectFormat),
-                ('model_parsers', ModelParser),
-                ('object_parsers', ObjectParser),
-                ('model_pages', ModelPage),
-                ('object_pages', ObjectPage),
-            ):
-                exclude = getattr(meta, 'exclude_%s' % variable, ())
-                pairs = [
-                    value.dub(self, name)
-                    for name, value in self._classes
-                    if issubclass(value, type)
-                ]
-                setattr(self, '_%s' % variable, [name for name, value in pairs])
-                setattr(self, '_%s_lookup' % variable, dict(pairs))
-
-            # index
-            self.index = model._meta.pk
-            if hasattr(meta, 'index'):
-                self.index, ingore, ignore, ignore = \
-                     model._meta.get_field_by_name(meta.index)
-
-            # connect to a models view in the module
+        # connect to a models view in the module
+        if module is None:
+            # if the views object is being created dynamically
+            # (with views_from_models), there is no module associated
+            # with the view instance; use the one provided on the
+            # Meta class
+            views = meta.views
+        else:
+            # otherwise, the views variable on the views module
             if not hasattr(module, 'views'):
                 module.views = module.Views()
             views = module.views
-            views.object_views[meta.verbose_name] = self
-            name = meta.verbose_name_plural
-            views.model_views[meta.verbose_name_plural.__str__()] = self
-            self.views = views
-
+        views.object_views[meta.verbose_name] = self
+        name = meta.verbose_name_plural
+        views.model_views[meta.verbose_name_plural.__str__()] = self
+        self.views = views
 
 class ViewBase(OrderedClass):
 
@@ -826,6 +838,26 @@ class Views(object):
     def process_extra(self, request):
         pass
 
+def views_from_models(models, exclude = ()):
+    views = Views()
+    for model_name, model in vars(models).items():
+        if model_name in exclude:
+            continue
+        if (
+            not isinstance(model, type) or
+            not issubclass(model, Model)
+        ):
+            continue
+        ViewMetaclass(model_name, (View,), {
+            "Meta": type('Meta', (object,), {
+                "model": model,
+                "views": views,
+                "verbose_name": lower(model_name, '-'),
+                "verbose_name_plural": lower(model_name, '-') + 's',
+            }),
+            "__module__": None
+        })
+    return views
 
 class Url(object):
 

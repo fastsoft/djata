@@ -1,93 +1,282 @@
 
-/* layout */
+/*
 
-    body table {
-        border-collapse: collapse;
-    }
+    Color Reference
+    ===============
 
-    table.record td, table.record th,
-    table.table td, table.table th {
-        border: solid 1px #bbbbbb;
-    }
+    green (pass):
+        background:
+        foreground: #ffffff
+    red (error):
+        background:
+        foreground: #ffffff
+    yellow (warning):
+        background: #f3d856
+        foreground: #d5a03c
+    blue (information, help):
+        background: #7777ff;
+        foreground: #ffffff
+    gray (meta):
+        background: #7777ff
+        foreground:
 
-    table.form td, table.form th,
-    table.record td, table.record th,
-    table.table td, table.table th {
-        padding: 2px 6px;
-        white-space: nowrap;
-        line-height: 1.8em;
-    }
+    green (command):
+        background: #ffffff
+        foreground: #00aa00;
+    blue (value):
+        background: #ffffff
+        foreground: #0000dd;
 
-    table.form tr th,
-    table.record tr th {
-        text-align: right;
-        vertical-align: top;
-    }
+*/
 
-    table.form tr td,
-    table.record tr td {
-        vertical-align: top;
-    }
+body {
+    background-color: #fff;
+    margin: 0;
+    font-family: Lucida Grande, Verdana, sans-serif;
+    font-size: 12px;
+}
+
+p, td, th {
+    font-size: 13px;
+    text-align: justify;
+}
+
+.code {
+    font-size: 11px;
+    font-family: Monaco, monospace;
+}
+
+code, tt, pre {
+    font-family: Monaco, monospace;
+}
+
+code {
+    color: #00aa00;
+}
 
 
-    body table.table tr th * {
-        color: #3333ff;
-    }
+/* messages */
 
-    body table.table tr th {
-        text-shadow: #888888 1px 1px;
-        background-image: url(th.gif);
-        background-repeat: repeat-x;
-        background-color: #bbbbbb;
-        color: #ffffff;
-    }
+.message {
+    background-color: #fff;
+    padding: 3px 6px 2px 6px;
+    border-bottom: 1px solid #dddddd;
+    min-height: 16px;
+}
 
-    p.controls {
-        padding: 2px 6px;
-        white-space: nowrap;
-        line-height: 1.8em;
-        text-shadow: #888888 1px 1px;
-        background-image: url(th.gif);
-        background-repeat: repeat-x;
-        background-color: #bbbbbb;
-        color: #ffffff;
-        border: solid 1px #bbbbbb;
-    }
+.heading {
+    text-shadow: #888888 1px 1px;
+}
 
-    p.controls a {
-        color: #ffffff;
-        font-weight: bold;
-        text-decoration: none;
-    }
+.command {
+    color: #00aa00;
+}
 
-/* style */
+.value {
+    color: #0000dd;
+}
 
-    body {
-        font-family: Lucida Grande, Verdana, sans-serif;
-        font-size: 12px;
-    }
+/* labeled messages */
+.error, .warn, .info, .pass, .fail, .help, .load, .module {
+    background-position: 2px center;
+    background-color: #7777ff;
+    background-repeat: no-repeat;
+    padding-left: 24px;
+}
 
-    p, td, th {
-        font-size: 12px;
-    }
+/* yellow messages */
+.error, .warn {
+    background-color: #fefbee;
+}
+.error {
+    background-image: url(icons/cancel.png);
+    color: red;
+}
+.error * {
+    color: red;
+}
+.warn {
+    background-image: url(icons/error.png);
+}
+.warn * {
+    color: #d5a03c;
+}
 
-    form {
-        display: inline;
-        margin: 0;
-        padding: 0;
-    }
+/* blue messages */
+.info, .info *, .help, .help * {
+    color: #eee;
+}
+.info {
+    background-image: url(icons/information.png);
+}
+.help {
+    background-image: url(icons/help.png);
+}
+.help > * {
+}
 
-    input[type=text],
-    textarea {
-        border: inset 1px;
-        padding: 2px 6px;
-    }
+/* gray messages */
+.load, .module {
+    background-color: #efefef;
+    border-top: solid 1px #ffffff;
+    border-bottom: solid 1px #aaaaaa;
+    color: #777;
+}
+.load *, .module * {
+    color: #777;
+}
+.load {
+    background-image: url(icons/database.png);
+}
+.module {
+    background-image: url(icons/brick.png);
+}
+.module a {
+    text-decoration: none;
+}
+.module a:hover {
+    text-decoration: underline;
+}
 
-    a img {
-        border: none;
-    }
+/* green messages */
+.pass {
+    background-image: url(icons/accept.png);
+    background-color: #33aa33;
+    color: #eee;
+}
+.pass * {
+    color: #eee;
+}
 
-    #id_page_number_input {
-        width: 3ex;
-    }
+/* red messages */
+.fail {
+    background-image: url(icons/exclamation.png);
+    background-color: #ff5555;
+    color: #eee;
+}
+.fail * {
+    color: #eee;
+}
+
+/****/
+
+table {
+    border-collapse: collapse;
+}
+
+table.form > tbody > tr > th,
+table.record > tbody > tr > th {
+    text-align: right;
+}
+
+table.table > tbody > tr > th {
+    text-shadow: #888888 1px 1px;
+    background-image: url(th.gif);
+    background-repeat: repeat-x;
+    background-color: #bbbbbb;
+    color: #ffffff;
+}
+
+table.table > tbody > tr > td {
+    vertical-align: top;
+}
+
+table > tr > th * {
+    color: #3333ff;
+}
+
+body table tr th.warn {
+    text-shadow: #cccccc 1px 1px;
+}
+
+body table tr td, body table tr th {
+    border-bottom: solid 1px #aaaaaa;
+    border-right: solid 1px #dddddd;
+    padding: 2px 2ex;
+    white-space: nowrap;
+}
+
+.label {
+    background-position: 2px center;
+    background-repeat: no-repeat;
+    padding-left: 20px;
+    min-height: 16px;
+}
+
+.label span {
+    display: none;
+}
+
+.disabled {
+    -webkit-opacity: .25;
+    -moz-opacity: .25;
+    filter: alpha(opacity = 25);
+    opacity: .25;
+}
+
+.label.zoom-in {
+    background-image: url(icons/zoom_in.png);
+}
+
+.label.zoom-out {
+    background-image: url(icons/zoom_out.png);
+}
+
+.label.next {
+    background-image: url(icons/resultset_next.png);
+}
+
+.label.previous {
+    background-image: url(icons/resultset_previous.png);
+}
+
+.label.first {
+    background-image: url(icons/resultset_first.png);
+}
+
+.label.last {
+    background-image: url(icons/resultset_last.png);
+}
+
+.label.attach {
+    background-image: url(icons/attach.png);
+}
+
+.paginate {
+    display: table;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+
+    padding: 8px 15px;
+    border-top: solid 1px #aaaaaa;
+    border-right: solid 1px #aaaaaa;
+    background-color: #eeeeee;
+    border-top-right-radius: 15px;
+    -moz-border-radius-topright: 15px;
+    -webkit-border-top-right-radius: 15px;
+
+}
+.paginate > * {
+    display: table-cell;
+    padding: 0 .5em;
+}
+.paginate_body {
+    text-align: center;
+    width: 300px;
+    min-width: 300px;
+}
+
+.paginate form {
+    margin: 0;
+    padding; 0;
+}
+
+.paginate input {
+    margin: 0;
+}
+
+#id_page_number_input {
+    width: 3em;
+}
 

@@ -55,6 +55,8 @@ various properties to the ``Meta`` metadata class for your view.
   The intent is to support Django access control in future versions.
 - ``default_page_length``, when set to an integer, turns on
   pagination with a particular number of objects per page.
+- ``max_page_length`` permits the user to specify any page length on a URL up
+  to this value.
 - ``default_page_number``, dictates the page that viewers first see.
   The default is ``1``.  ``-1`` shows the last page first.
 - ``visible``, if set to ``False``, causes the view to not appear on
@@ -62,6 +64,11 @@ various properties to the ``Meta`` metadata class for your view.
 - ``abstract``, when set to ``True``, tells Djata to ignore the class.
   This is useful for base classes that are not associated with any
   particular model and are not intended to be complete views.
+- ``default_format`` is the extension of the format to use for the view by
+  default.  If it is not specified, it checks for a variable by the same name
+  on the views module.  If neither the class or module specify a format,
+  requesting on a URL for the model without providing a format extension will
+  result in a "No format specified error".
 
 The ``djata.views.ViewBase`` supports all the features of a ``View``
 class but does not support any formats.  This is a good base

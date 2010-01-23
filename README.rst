@@ -39,4 +39,5 @@ In future versions, Djata should support:
   extension.
 - A progressively enhanced, cross-referenced, HTML user interface. 
 - Custom views for viewing and editing charts, graphs, and trees.
+- Throttling and Pacing
 

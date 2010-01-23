@@ -167,16 +167,6 @@ JSON Query
 
 Rule Grammar::
 
-    {
-        "pageLength": Number
-        "page": Number,
-        "format": String, // file type extension
-        "parser": String, // extension
-        "select": [...fieldNames]
-        "order": [...fieldNames],
-        "where": rules,
-    }
-
     predicate:
         [subject, verb, object] |
         [subject, "range", [start, stop]] |
