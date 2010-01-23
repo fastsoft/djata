@@ -1,5 +1,6 @@
 
 from djata.formats import TemplateFormat, ModelFormat, ObjectFormat, ObjectPage
+from django.db.models import ForeignKey
 
 class RawHtmlFormat(TemplateFormat):
     name = 'raw.html'
@@ -42,12 +43,12 @@ class RawHtmlModelFormat(ModelFormat, HtmlFormat):
         context['fields'] = fields
         context['table'] = [
             [
-                field.value_from_object(object)
+                cell(field, object)
                 for field in fields
             ]
             for object in objects
         ]
-        context['column_names'] = [
+        context['field_names'] = [
             field.verbose_name
             for field in fields
         ]
@@ -86,4 +87,24 @@ class HtmlChangePage(ObjectPage):
         from django.forms import form_for_model
         context['form'] = form_for_model(view.meta.model)(instance = object)
         super(HtmlAddFormat, self).process(request, view)
+
+def cell(field, object):
+    value = field.value_from_object(object)
+    if value is None:
+        return
+    else:
+        return Cell(field, object, value)
+    
+class Cell(object):
+    def __init__(self, field, object, value):
+        self.field = field
+        self.object = object
+        self.value = value
+    def __unicode__(self):
+        return unicode(self.value)
+    @property
+    def url(self):
+        if not isinstance(self.field, ForeignKey):
+            return
+        return '#'
 

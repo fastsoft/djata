@@ -1,4 +1,12 @@
 
+# TODO indent
+# TODO page_length page_number
+# TODO use-nan
+# TODO indent
+# TODO compact
+# TODO expand related fields
+# TODO use URLs for foreign keys
+
 from datetime import datetime
 from django.utils.simplejson import *
 from djata.python.wrap import wrap
@@ -68,7 +76,7 @@ class JsonModelFormat(ModelFormat):
         envelope = {
             'length': objects.count(),
             'fields': field_names,
-            'page_number': context.get('page', None),
+            'page_number': context.get('page_number', None),
             'page_length': context.get('page_length', None),
         }
 

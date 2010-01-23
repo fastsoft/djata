@@ -8,9 +8,11 @@ class Cell(object):
     def __init__(self, field, object):
         self.field = field
         self.object = object
-        self.value = field.value_from_object(object)
     def __unicode__(self):
         return self.value
+    @property
+    def value(self):
+        return self.field.value_from_object(self.object)
 
 class Field(OrderedProperty):
     Cell = Cell

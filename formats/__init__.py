@@ -2,7 +2,6 @@
 from djata.orderedclass import OrderedClass, OrderedProperty, OrderedMetaclass
 from django.http import HttpResponse
 from django.template import RequestContext, loader
-import djata.formatter.json as json
 from djata.python.names import *
 
 class Format(OrderedClass):

@@ -64,11 +64,13 @@ def page_groups(start, at, stop):
         classify(page_numbers, gt_pairs = adjacency)
     )
 
-def paginate(request, context, objects, default_length = 10, dimension = None):
+def paginate(request, context, objects, default_length = 10, default_end = 0, dimension = None):
     page_length = request.GET.get('page_length', default_length)
+    page_length = int(page_length)
     paginator = Paginator(objects, page_length)
-    page_number = request.GET.get('page_number', paginator.num_pages)
+    page_number = request.GET.get('page', paginator.num_pages if default_end else 1)
     page = paginator.page(page_number)
+    context['page_number'] = int(page_number)
     context['paginator'] = paginator
     context['page'] = page
     return page.object_list
