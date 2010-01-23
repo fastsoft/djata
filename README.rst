@@ -28,6 +28,9 @@ have time to write.
 - `Installation Notes <docs/install.rst>`_
 - `Configuring Django Settings <docs/settings.rst>`_
 
+For an example Djata application, check see 
+`Bugwar <http://github.com/fastsoft/bugwar>`_.
+
 In future versions, Djata should support:
 
 - Django authentication for write, delete, and most importantly read
