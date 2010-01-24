@@ -1,0 +1,7 @@
+{% if cell.url %}
+    <a href="{{cell.url}}">
+    {{cell|default_if_none:""|escape|default:"&nbsp;"}}
+    </a>
+{% else %}
+    {{cell|default_if_none:""|escape|default:"&nbsp;"}}
+{% endif %}

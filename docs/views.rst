@@ -69,6 +69,24 @@ various properties to the ``Meta`` metadata class for your view.
   on the views module.  If neither the class or module specify a format,
   requesting on a URL for the model without providing a format extension will
   result in a "No format specified error".
+- ``objects`` and ``fields``, compatible with the corresponding properties
+  of a model, may be provided as an alternative to using Django storage.
+  ``objects.get(pk)``, ``fields.rel.to.objects.get(pk)``, ``fields.name``,
+  and ``fields.value_from_object(object)`` must be supported.
+- ``include_fields`` white-lists certain fields by name.  No others will
+  be available.
+- ``exclude_fields`` black-lists certain fields by name.  All others will
+  be available.
+- ``exclude_methods`` black lists any set of ``GET``, ``PUT``,
+  ``POST``, ``DELETE``
+- ``exclude_actions`` black lists any set of ``read``, ``write``, ``add``,
+  ``change``, ``delete``
+- ``exclude_model_formats``
+- ``exclude_object_formats``
+- ``exclude_model_parsers``
+- ``exclude_object_parsers``
+- ``exclude_model_pages``
+- ``exclude_object_pages``
 
 The ``djata.views.ViewBase`` supports all the features of a ``View``
 class but does not support any formats.  This is a good base

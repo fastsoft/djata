@@ -17,14 +17,40 @@ class RawHtmlObjectFormat(ObjectFormat, RawHtmlFormat):
         context = request.context
         object = view.get_object()
         fields = view.get_fields()
+        parent_fields = None # XXX
+        child_fields = view.get_child_fields()
+        related_fields = view.get_related_fields()
         context['object'] = object
         context['fields'] = fields
+        context['related_fields'] = related_fields
+        context['child_fields'] = related_fields
         context['items'] = [
             {
                 'name': field.name,
-                'value': field.value_from_object(object)
+                'value': cell(field, object, view)
             }
             for field in fields
+        ]
+        context['child_items'] = [
+            {
+                'name': field.var_name,
+                'items': [
+                    ChildCell(item, view)
+                    for item in
+                    field.model.objects.filter(**{
+                        field.field.name: object,
+                    })
+                ]
+            }
+            for field in child_fields
+        ]
+        context['related_items'] = [
+            {
+                'name': field.name,
+                'items': [
+                ]
+            }
+            for field in related_fields
         ]
 
 class HtmlObjectFormat(RawHtmlObjectFormat):
@@ -43,7 +69,7 @@ class RawHtmlModelFormat(ModelFormat, HtmlFormat):
         context['fields'] = fields
         context['table'] = [
             [
-                cell(field, object)
+                cell(field, object, view)
                 for field in fields
             ]
             for object in objects
@@ -88,23 +114,41 @@ class HtmlChangePage(ObjectPage):
         context['form'] = form_for_model(view.meta.model)(instance = object)
         super(HtmlAddFormat, self).process(request, view)
 
-def cell(field, object):
-    value = field.value_from_object(object)
+def cell(field, object, view):
+    value = get_object_field_value(object, field)
     if value is None:
         return
     else:
-        return Cell(field, object, value)
+        return Cell(field, object, view, value)
     
 class Cell(object):
-    def __init__(self, field, object, value):
+    def __init__(self, field, object, view, value):
         self.field = field
         self.object = object
+        self.view = view
         self.value = value
     def __unicode__(self):
         return unicode(self.value)
     @property
     def url(self):
-        if not isinstance(self.field, ForeignKey):
-            return
-        return '#'
+        if self.field.primary_key:
+            return self.view.get_url_of_object(self.object)
+        elif isinstance(self.field, ForeignKey):
+            return self.view.get_url_of_object(self.value)
+
+class ChildCell(object):
+    def __init__(self, object, view):
+        self.object = object
+        self.view = view
+    def __unicode__(self):
+        return unicode(self.object)
+    @property
+    def url(self):
+        return self.view.get_url_of_object(self.object)
+
+def get_object_field_value(object, field):
+    value = field.value_from_object(object)
+    if isinstance(field, ForeignKey) and value is not None:
+        value = field.rel.to.objects.get(pk = value)
+    return value
 

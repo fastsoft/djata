@@ -44,4 +44,5 @@ In future versions, Djata should support:
 - A progressively enhanced, cross-referenced, HTML user interface. 
 - Custom views for viewing and editing charts, graphs, and trees.
 - Throttling and Pacing
+- Generalize for inter-application cross-references
 

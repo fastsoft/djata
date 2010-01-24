@@ -32,7 +32,8 @@ from itertools import chain
 
 from django.db.models import Model
 from django.template import RequestContext, loader, TemplateDoesNotExist
-from django.http import HttpResponse, HttpResponseServerError, HttpResponseRedirect, HttpResponseBadRequest, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseServerError, \
+    HttpResponseRedirect, HttpResponseBadRequest, HttpResponseNotAllowed
 from django.core.exceptions import ObjectDoesNotExist, FieldError
 import django.forms as forms
 from django.conf import settings
@@ -44,86 +45,168 @@ from djata.paginate import page_groups
 from djata.rules import *
 from djata.exceptions import *
 from djata.formats import *
-from djata.fields import *
+from django.db.models import ForeignKey
 
 class ViewOptions(object):
-    pass
+
+    visible = True
 
 class ViewMetaclass(OrderedMetaclass):
 
     def __init__(self, name, bases, attys):
         super(ViewMetaclass, self).__init__(name, bases, attys)
 
-        if (
-            self.__name__ == 'View' or
-            self.__name__ == 'ViewBase' or (
+        if self.abstract:
+            return
+
+        self.init_module()
+
+        self.init_meta()
+        meta = self.meta
+
+        self.init_model()
+        model = self.model
+
+        self.init_objects_fields_names()
+        fields = self.fields
+        objects = self.objects
+        verbose_name = self.verbose_name
+        verbose_name_plural = self.verbose_name_plural
+
+        # pertaining to include_fields, exclude_fields, and
+        # custom Field views
+        self.init_fields()
+        fields = self.fields
+
+        self.init_actions_methods()
+        self.init_formats_parsers()
+        self.init_default_format()
+        self.init_index()
+
+        self.base_url = self.get_variable('base_url')
+
+        self.init_views()
+
+        self.update_views()
+
+    def get_variable(self, name, value = None):
+        model = self.model
+        meta = self.meta
+        model_meta = getattr(model, '_meta')
+        return getattr(
+            self,
+            name,
+            getattr(
+                meta,
+                name,
+                getattr(
+                    model,
+                    name,
+                    getattr(
+                        model_meta,
+                        name,
+                        getattr(
+                            self.module,
+                            name,
+                            value
+                        )
+                    )
+                )
+            )
+        )
+
+    @property
+    def abstract(self):
+        return (
+            (
                 hasattr(self, 'Meta') and 
                 hasattr(self.Meta, 'abstract') and
                 self.Meta.abstract
             )
-        ):
-            return
+        )
 
+    def get_module(self):
         # discover the module that contains the model view
         if self.__module__ is None:
-            module = None
-        else:
-            module = self.module = __import__(
-                self.__module__,
-                {}, {}, [self.__name__]
-            )
+            return
+        return __import__(
+            self.__module__,
+            {}, {}, [self.__name__]
+        )
 
-        if hasattr(self, 'Meta'):
+    def init_module(self):
+        self.module = self.get_module()
+
+    @property
+    def Views(self):
+        return self.get_variable('Views')
+
+    def init_views(self):
+        self.views = self.get_views()
+
+    def get_views(self):
+        views = getattr(self.meta, 'views', getattr(self.module, 'views', None))
+        assert views is not None or self.module is not None, 'View %s does not reference its parent views.  The containing module is %s.' % (self, self.module)
+        if views is None:
+            Views = self.Views
+            views = Views()
+            if self.module is not None:
+                # memoize
+                self.module.views = views
+        return views
+
+    def update_views(self):
+        views = self.views
+        views.add_object_view(self.verbose_name, self)
+        views.add_model_view(self.verbose_name_plural.__str__(), self)
+
+    def init_meta(self):
+        if 'Meta' in self.__dict__:
             class Meta(ViewOptions):
                 pass
-            for name, value in vars(self.Meta).items():
+            for name, value in vars(self.__dict__['Meta']).items():
                 if not name.startswith('__'):
                     setattr(Meta, name, value)
         else:
-            self.Meta = ViewOptions
-        meta = self.meta = self.Meta()
-        meta.module = module
+            Meta = ViewOptions
+        self.meta = Meta()
 
-        meta.name = self.__name__
-        # default to True if not yet defined
-        meta.visible = getattr(meta, 'visible', True)
-
+    def get_model(self):
         # attempt to grab a model from the containing module's "models"
         #  value
-        if not hasattr(meta, 'model') and hasattr(module, 'models'):
-            model = meta.model = getattr(module.models, self.__name__)
+        if hasattr(self.meta, 'model'):
+            return self.meta.model
+        if hasattr(self.module, 'models'):
+            return getattr(self.module.models, self.__name__, None)
 
-        # objects
+    def init_model(self):
+        self.model = self.get_model()
 
-        # the user naturally has the option of defining their
-        #  own objects and fields class values, but if they have
-        #  a model, we use it as a source of those properties.
-        if hasattr(meta, 'model'):
-            model = meta.model
-            if not hasattr(self, 'objects'):
-                self.objects = model.objects
-            if not hasattr(self, 'fields'):
-                fields = model._meta._fields()
-            if not hasattr(meta, 'verbose_name'):
-                meta.verbose_name = str(model._meta.verbose_name)
-            if not hasattr(meta, 'verbose_name_plural'):
-                meta.verbose_name_plural = str(model._meta.verbose_name_plural)
-        else:
-            if not hasattr(meta, 'verbose_name'):
-                meta.verbose_name = lower(self.__name__, '-')
-            if not hasattr(meta, 'verbose_name_plural'):
-                meta.verbose_name_plural = meta.verbose_name + 's'
+    def init_objects_fields_names(self):
+        model = self.model
+        meta = self.meta
+        model_meta = getattr(model, '_meta')
 
-        if not hasattr(self, 'objects'):
-            raise Exception("View %s does not define its 'objects' "
-                "property nor provide a model to obtain them from" % self)
-        if not hasattr(meta, 'verbose_name'):
-            raise Exception("Model view has no verbose name")
-        if not hasattr(meta, 'verbose_name_plural'):
-            meta.verbose_name_plural = '%ss' % meta.verbose_name
+        self.objects = self.get_variable('objects')
+        self.fields = self.get_variable('fields')
 
+        assert model is not None or hasattr(meta, 'objects') or hasattr(self,
+        'objects'), 'View %s does not define its "objects" property, a '\
+        '"meta.objects" property, a "meta.model.objects" property, and the '\
+        'containing module does not provide a "models" property with a model '\
+        'with the same name' % self
 
-        # fields
+        self.verbose_name = self.get_variable('verbose_name')
+        assert self.verbose_name is not None, 'View %s does not define a'\
+        '"verbose_name", "Meta.verbose_name", provide a model with a'\
+        '"verbose_name"'
+
+        self.verbose_name_plural = self.get_variable('verbose_name_plural') or\
+        "%ss" % self.verbose_name
+
+    def init_fields(self):
+        meta = self.meta
+        fields = self.fields
 
         exclude_fields = set(getattr(meta, 'exclude_fields', ()))
         self.fields = [
@@ -135,15 +218,18 @@ class ViewMetaclass(OrderedMetaclass):
             for (name, value) in self._properties
             if isinstance(value, Field)
         ])
-        if hasattr(meta, 'fields'):
+        if hasattr(meta, 'include_fields'):
             fields = dict(
                 (field.name, field)
                 for field in self.fields
             )
             self.fields = [
                 fields[field_name]
-                for field_name in meta.fields
+                for field_name in meta.include_fields
             ]
+
+    def init_actions_methods(self):
+        meta = self.meta
 
         # build dictionaries for looking up properties
         for prefix, property in (
@@ -161,6 +247,9 @@ class ViewMetaclass(OrderedMetaclass):
             setattr(self, '_%s' % property, [name for name, value in pairs])
             setattr(self, '_%s_lookup' % property, dict(pairs))
 
+    def init_formats_parsers(self):
+        meta = self.meta
+
         # formatters
         for variable, type in (
             ('model_formats', ModelFormat),
@@ -174,10 +263,17 @@ class ViewMetaclass(OrderedMetaclass):
             pairs = [
                 value.dub(self, name)
                 for name, value in self._classes
-                if issubclass(value, type)
+                if issubclass(value, type) and name not in exclude
             ]
             setattr(self, '_%s' % variable, [name for name, value in pairs])
             setattr(self, '_%s_lookup' % variable, dict(pairs))
+
+    def init_default_format(self):
+        self.default_format = self.get_variable('default_format')
+
+    def init_index(self):
+        model = self.model
+        meta = self.meta
 
         # index
         self.index = model._meta.pk
@@ -185,26 +281,12 @@ class ViewMetaclass(OrderedMetaclass):
             self.index, ingore, ignore, ignore = \
                     model._meta.get_field_by_name(meta.index)
 
-        # connect to a models view in the module
-        if module is None:
-            # if the views object is being created dynamically
-            # (with views_from_models), there is no module associated
-            # with the view instance; use the one provided on the
-            # Meta class
-            views = meta.views
-        else:
-            # otherwise, the views variable on the views module
-            if not hasattr(module, 'views'):
-                module.views = module.Views()
-            views = module.views
-        views.object_views[meta.verbose_name] = self
-        name = meta.verbose_name_plural
-        views.model_views[meta.verbose_name_plural.__str__()] = self
-        self.views = views
-
 class ViewBase(OrderedClass):
 
     __metaclass__ = ViewMetaclass
+
+    class Meta:
+        abstract = True
 
     content_types = {
         'application/x-www-urlencoded': 'urlencoded',
@@ -216,6 +298,13 @@ class ViewBase(OrderedClass):
         self._pk = pk
         self._pks = pks
         self._format = format
+
+    def get_url_of_object(self, object):
+        views = self.meta.views
+        return views.get_url_of_object(object)
+
+    def get_url_of_model(self, model):
+        views = self.meta.views
 
     @classmethod
     def respond(
@@ -311,11 +400,11 @@ class ViewBase(OrderedClass):
                         setattr(object, field.attname, updates[field.attname])
                 object.save()
                 self._object = object
-            except self.meta.model.DoesNotExist:
+            except self.model.DoesNotExist:
                 # add
                 self.authorize_add()
                 object = self.parse_object()
-                object = self.meta.model.objects.create(**object)
+                object = self.model.objects.create(**object)
                 object.save()
                 self._object = object
             return self.format()
@@ -326,7 +415,7 @@ class ViewBase(OrderedClass):
             raise NotYetImplemented('cannot add object to model (try the singular version).')
         elif self._view == 'object':
             object = self.parse_object()
-            object = self.meta.model.objects.create(**object)
+            object = self.model.objects.create(**object)
             object.save()
             self._object = object
         return self.format()
@@ -392,7 +481,7 @@ class ViewBase(OrderedClass):
                 # XXX content negotiation
             format = getattr(self.meta, 'default_format', None)
             if format is None:
-                format = getattr(self.meta.module, 'default_format', None)
+                format = getattr(getattr(self, 'module', None), 'default_format', None)
             if format is None:
                 raise NoFormatSpecifiedError()
         return format
@@ -446,14 +535,17 @@ class ViewBase(OrderedClass):
 
     # TABLE STUFF
 
-    def select(self, objects):
-        return objects
-
     def get_fields(self):
         request = self._request
         fields = self.fields
 
-        fields = self.select(fields)
+        # eclude fields that refer to models that are
+        # have no corresponding view
+        fields = [
+            field for field in fields
+            if not isinstance(field, ForeignKey)
+            or field.rel.to in self.meta.views.view_of_model
+        ]
 
         select = None
         if 'select' in request.JSON:
@@ -461,7 +553,10 @@ class ViewBase(OrderedClass):
         if 'select' in request.GET:
             select = request.GET['select'].split(',')
         if select is not None:
-            field_dict = dict((field.name, field) for field in fields)
+            field_dict = dict(
+                (field.name, field)
+                for field in fields
+            )
             non_existant_fields = [
                 name for name in select
                 if name not in field_dict
@@ -471,6 +566,28 @@ class ViewBase(OrderedClass):
             fields = list(field_dict[name] for name in select)
 
         return fields
+
+    def get_child_fields(self):
+        model = self.model
+        model_meta = model._meta
+        return [
+            field
+            for field, model, direct, m2m in (
+                model_meta.get_field_by_name(name)
+                for name in model_meta.get_all_field_names()
+            ) if not direct and not m2m
+        ]
+
+    def get_related_fields(self):
+        model = self.model
+        model_meta = model._meta
+        return [
+            field
+            for field, model, direct, m2m in (
+                model_meta.get_field_by_name(name)
+                for name in model_meta.get_all_field_names()
+            ) if m2m
+        ]
 
     def get_objects(self):
         if hasattr(self, '_objects'):
@@ -539,7 +656,7 @@ class ViewBase(OrderedClass):
                     objects = objects.filter(**{name: value})
 
             if foreign:
-                plural = field.rel.to._meta.verbose_name_plural.__str__()
+                plural = field.rel.to._meta.verbose_name_plural[:]
             else:
                 plural = field.name + 's'
 
@@ -675,7 +792,7 @@ class ViewBase(OrderedClass):
         request = self._request
         if getattr(self.meta, 'insecure', False):
             return True
-        if hasattr(self.meta.model._meta, 'get_read_permission'):
+        if hasattr(self.model._meta, 'get_read_permission'):
             if not user.is_authenticated():
                 raise NotAuthenticatedError()
             if not request.user.has_permission('%s.%s' % (
@@ -683,7 +800,7 @@ class ViewBase(OrderedClass):
                 meta.get_read_permission()
             )):
                 raise PermissionDeniedError('read')
-        elif 'can_read' in self.meta.model._meta.permissions:
+        elif 'can_read' in self.model._meta.permissions:
             if not user.is_authenticated():
                 raise NotAuthenticatedError()
             if not request.user.has_permission('%s.%s' % (
@@ -740,6 +857,11 @@ class ViewBase(OrderedClass):
 
 class View(ViewBase):
 
+    default_format = 'html'
+
+    class Meta:
+        abstract = True
+
     # model formats
     class JsonModelFormat(JsonModelFormat): pass
     class JsonpModelFormat(JsonpModelFormat): pass
@@ -778,7 +900,37 @@ class Views(object):
 
     def __init__(self):
         self.model_views = {}
+        self.model_view_names = {}
         self.object_views = {}
+        self.object_view_names = {}
+        self.view_of_model = {}
+
+    def add_model_view(self, name, view):
+        self.model_views[name] = view
+        self.model_view_names[view] = name
+        self.view_of_model[view.model] = view
+
+    def add_object_view(self, name, view):
+        self.object_views[name] = view
+        self.object_view_names[view] = name
+        self.view_of_model[view.model] = view
+
+    def get_url_of_object(self, object, format = None):
+        model = object._base_manager.model
+        if model not in self.view_of_model:
+            return '#no-view-of-model'
+        view = self.view_of_model[model]
+        index = view.index.value_from_object(object)
+        view_name = self.object_view_names[view]
+        url = view.base_url
+        if url is None:
+            return '#'
+        if format is None and view.default_format:
+            format = view.default_format
+        if format is None:
+            return '%s/%s/%s/' % (url, view_name, index,)
+        else:
+            return '%s/%s/%s.%s' % (url, view_name, index, format,)
 
     def respond(
         self,
@@ -838,7 +990,7 @@ class Views(object):
     def process_extra(self, request):
         pass
 
-def views_from_models(models, exclude = ()):
+def views_from_models(models, exclude = (), base_url = None):
     views = Views()
     for model_name, model in vars(models).items():
         if model_name in exclude:
@@ -854,6 +1006,7 @@ def views_from_models(models, exclude = ()):
                 "views": views,
                 "verbose_name": lower(model_name, '-'),
                 "verbose_name_plural": lower(model_name, '-') + 's',
+                "base_url": base_url,
             }),
             "__module__": None
         })
@@ -1000,74 +1153,4 @@ def respond_kws(
             template = loader.get_template('djata/errors/base.html')
         response = template.render(request.context)
         return exception.response_class(response)
-
-"""
-
-::
-
-    import app.models as models
-    default_format = 'html'
-
-    class Model(View):
-
-        class Meta:
-
-            abstract = False
-
-            # the model object associated with the model view.  By default, this
-            # is the model with the same name in the containing modeule's "models"
-            # attribute.  See the above import declaration in the modeule, or you
-            # can explicitly set each View's model like this
-            model = Model
-
-            format = 'json' # forces a format regardless of extension or content-type
-            parser = 'json' # forces a parser regardless of content-type
-
-            # if the user does not specify a the format they would like to receive
-            default_format = 'json'
-            # if the user does not specify the format they sent data with
-            default_parser = 'json'
-
-            # the URL component for a single object.  by default, this is inherited
-            # from the model
-            verbose_name = 'record'
-            # the URL component for multiple objects from the model, by default, this
-            # is also inherited from the model's plural verbose name.
-            verbose_name_plural = 'records'
-
-            fields = ('id', ...)       # expliccate the list of fields to provide
-            methods = ('post', ...)    # explicate the list of methods to provide
-            actions = ('add', ...)     # explicate the list of actions to provide
-            model_parsers = ('json', ...)    # explicate the parsers to provide
-            model_parsers = ('json', ...)    # explicate the parsers to provide
-            object_formats = ('json', ...)    # explicate the formatters to provide
-            object_formats = ('json', ...)    # explicate the formatters to provide
-
-            exclude_fields = ('id', ...)
-            exclude_methods = ('post', ...)
-            exclude_actions = ('add', ...)
-            exclude_model_parsers = ('json', ...)
-            exclude_model_formatters = ('json', ...)
-            exclude_object_parsers = ('json', ...)
-            exclude_object_formatters = ('json', ...)
-
-            index = 'name'           # the field to use instead of the pk for indexing
-            start = '1'              # redirects to a record instead of providing
-                                     #  a table view.
-
-            # Pagination
-            page_length = 10
-            default_page = -1        # start from the end or the beginning, 0 by default
-            default_page_length = 10
-            require_pagination = False
-            max_page_length = 100
-
-        class HtmlModelFormat(HtmlModelFormat):
-            name = 'html'
-            template = 'app/model.html'
-
-            def process_extra(self, request, view):
-                pass
-
-"""
 

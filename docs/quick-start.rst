@@ -37,7 +37,7 @@ documentation <views.rst>`_ for more information on customizing views.
 
 Alternately, if you would just like to automatically generate a Djata view
 for every model in your models file, you can use the ``views_from_models``
-function
+function.
 
 ``example/views.py``::
 
@@ -47,7 +47,17 @@ function
 
 You can blend both approaches by customizing particular models after you
 construct the views object.  If you do not create a views object, it will be
-created automatically by the first view class you declare.
+created automatically by the first view class you declare.  The
+``views_from_models`` function accepts an optional ``exclude`` argument to
+suprress generation of views for the named models::
+
+    from djata.views import *
+    import example.models as models
+    views = views_from_models(models, exclude = ('Bar',))
+
+    class Bar(View):
+        class Meta:
+            verbose_name_plural = 'barrii'
 
 At the time of this writing, recent versions of Django expose the model's
 ``verbose_name`` and ``verbose_name_plural`` (that Django uses for URLs of

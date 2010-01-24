@@ -41,6 +41,22 @@ p, td, th {
     text-align: justify;
 }
 
+a {
+    color: #0000aa;
+}
+
+a:active {
+    color: #aaaaaa;
+}
+
+a:visited {
+    color: #777777;
+}
+
+a:hover {
+    color: #0000ff;
+}
+
 .code {
     font-size: 11px;
     font-family: Monaco, monospace;

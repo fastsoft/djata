@@ -2,7 +2,35 @@
 {% for item in items %}
     <tr>
         <th>{{item.name|escape}}:</th>
-        <td>{{item.value|default_if_none:""|escape|default:"&nbsp;"}}</td>
+        <td>
+            {% with item.value as cell %}
+                {% include "djata/cell.raw.html" %}
+            {% endwith %}
+        </td>
+    </tr>
+{% endfor %}
+{% for item in child_items %}
+    <tr>
+        <th>{{item.name|escape}}:</th>
+        <td>
+            <ul>
+                {% for cell in item.items %}
+                <li>{% include "djata/cell.raw.html" %}</li>
+                {% endfor %}
+            </ul>
+        </td>
+    </tr>
+{% endfor %}
+{% for item in related_items %}
+    <tr>
+        <th>{{item.name|escape}}:</th>
+        <td>
+            <ul>
+                {% for cell in item.items %}
+                <li>{% include "djata/cell.raw.html" %}</li>
+                {% endfor %}
+            </ul>
+        </td>
     </tr>
 {% endfor %}
 </table>
