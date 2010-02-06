@@ -1,3 +1,19 @@
-<p class="controls">
-    <a href="{{url.action}}=delete">delete</a>
-</p>
+<div class="content">
+
+    <ul class="controls">
+
+        {% include "djata/formats.raw.html" %}
+
+        <li>
+            Related views:
+            <ul class="views">
+                <li><a href="{{view.get_objects_url}}">all {{view.verbose_name_plural}}</a></li>
+                <li><a href="{{view.get_models_url}}">all views</a></li>
+            </ul>
+        </li>
+
+    </ul>
+
+    {% if view.insecure %}<p><abbr title="Anyone can edit, add, or delete {{view.verbose_name_plural}} without authenticating.">Insecure</abbr>.</p>{% endif %}
+
+</div>

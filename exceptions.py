@@ -20,7 +20,11 @@ class PostActionError(UserError):
 
 class ModelFormatNotAvailable(UserError): pass
 
-class ObjectFormatNotAvailable(UserError): pass
+class ObjectFormatNotAvailable(UserError):
+    def __init__(self, format, formats):
+        UserError.__init__(self)
+        self.format = format
+        self.formats = formats
 
 class ModelParserNotAvailable(UserError): pass
 

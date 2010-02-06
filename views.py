@@ -41,6 +41,7 @@ from django.conf import settings
 from djata.python.names import *
 from djata.python.orderedclass import \
      OrderedClass, OrderedProperty, OrderedMetaclass
+from djata.python.iterkit import unique
 from djata.paginate import page_groups
 from djata.rules import *
 from djata.exceptions import *
@@ -48,7 +49,6 @@ from djata.formats import *
 from django.db.models import ForeignKey
 
 class ViewOptions(object):
-
     visible = True
 
 class ViewMetaclass(OrderedMetaclass):
@@ -59,56 +59,49 @@ class ViewMetaclass(OrderedMetaclass):
         if self.abstract:
             return
 
+        # module
         self.init_module()
-
+        # meta
         self.init_meta()
-        meta = self.meta
-
+        # model
         self.init_model()
-        model = self.model
+        # views, module.views
+        self.init_views()
 
+        # fields, objects, verbose_name, verbose_name_plural
         self.init_objects_fields_names()
-        fields = self.fields
-        objects = self.objects
-        verbose_name = self.verbose_name
-        verbose_name_plural = self.verbose_name_plural
 
         # pertaining to include_fields, exclude_fields, and
         # custom Field views
-        self.init_fields()
-        fields = self.fields
-
+        self.init_fields() # fields
         self.init_actions_methods()
         self.init_formats_parsers()
         self.init_default_format()
         self.init_index()
 
-        self.base_url = self.get_variable('base_url')
-
-        self.init_views()
+        self.base_url = self.get('base_url')
+        self.insecure = self.get('insecure', False)
 
         self.update_views()
 
-    def get_variable(self, name, value = None):
+    def get(self, name, value = None):
+        # places to check, in priority order:
+        # view, view.meta
+        # views
+        # model, model.meta
+        # module
         model = self.model
         meta = self.meta
         model_meta = getattr(model, '_meta')
-        return getattr(
-            self,
-            name,
-            getattr(
-                meta,
-                name,
-                getattr(
-                    model,
-                    name,
-                    getattr(
-                        model_meta,
-                        name,
-                        getattr(
-                            self.module,
-                            name,
-                            value
+        views = getattr(self, 'views', None)
+        return getattr(self, name,
+            getattr(meta, name,
+                getattr(views, name,
+                    getattr(model, name,
+                        getattr(model_meta, name,
+                            getattr(self.module, name,
+                                value
+                            )
                         )
                     )
                 )
@@ -118,11 +111,9 @@ class ViewMetaclass(OrderedMetaclass):
     @property
     def abstract(self):
         return (
-            (
-                hasattr(self, 'Meta') and 
-                hasattr(self.Meta, 'abstract') and
-                self.Meta.abstract
-            )
+            hasattr(self, 'Meta') and 
+            hasattr(self.Meta, 'abstract') and
+            self.Meta.abstract
         )
 
     def get_module(self):
@@ -139,14 +130,16 @@ class ViewMetaclass(OrderedMetaclass):
 
     @property
     def Views(self):
-        return self.get_variable('Views')
+        return self.get('Views')
 
     def init_views(self):
         self.views = self.get_views()
 
     def get_views(self):
         views = getattr(self.meta, 'views', getattr(self.module, 'views', None))
-        assert views is not None or self.module is not None, 'View %s does not reference its parent views.  The containing module is %s.' % (self, self.module)
+        assert views is not None or self.module is not None, \
+            'View %s does not reference its parent views.  ' \
+            'The containing module is %s.' % (self, self.module)
         if views is None:
             Views = self.Views
             views = Views()
@@ -187,8 +180,8 @@ class ViewMetaclass(OrderedMetaclass):
         meta = self.meta
         model_meta = getattr(model, '_meta')
 
-        self.objects = self.get_variable('objects')
-        self.fields = self.get_variable('fields')
+        self.objects = self.get('objects')
+        self.fields = self.get('fields')
 
         assert model is not None or hasattr(meta, 'objects') or hasattr(self,
         'objects'), 'View %s does not define its "objects" property, a '\
@@ -196,12 +189,12 @@ class ViewMetaclass(OrderedMetaclass):
         'containing module does not provide a "models" property with a model '\
         'with the same name' % self
 
-        self.verbose_name = self.get_variable('verbose_name')
+        self.verbose_name = self.get('verbose_name')
         assert self.verbose_name is not None, 'View %s does not define a'\
         '"verbose_name", "Meta.verbose_name", provide a model with a'\
         '"verbose_name"'
 
-        self.verbose_name_plural = self.get_variable('verbose_name_plural') or\
+        self.verbose_name_plural = self.get('verbose_name_plural') or\
         "%ss" % self.verbose_name
 
     def init_fields(self):
@@ -265,11 +258,11 @@ class ViewMetaclass(OrderedMetaclass):
                 for name, value in self._classes
                 if issubclass(value, type) and name not in exclude
             ]
-            setattr(self, '_%s' % variable, [name for name, value in pairs])
+            setattr(self, '_%s' % variable, tuple(unique(name for name, value in pairs)))
             setattr(self, '_%s_lookup' % variable, dict(pairs))
 
     def init_default_format(self):
-        self.default_format = self.get_variable('default_format')
+        self.default_format = self.get('default_format')
 
     def init_index(self):
         model = self.model
@@ -290,6 +283,7 @@ class ViewBase(OrderedClass):
 
     content_types = {
         'application/x-www-urlencoded': 'urlencoded',
+        'application/x-www-form-urlencoded': 'urlencoded',
     }
 
     def __init__(self, request, view, pk, pks, format):
@@ -300,11 +294,29 @@ class ViewBase(OrderedClass):
         self._format = format
 
     def get_url_of_object(self, object):
-        views = self.meta.views
-        return views.get_url_of_object(object)
+        #return self.views.get_view_of_object(object).get_object_url(object)
+        return self.views.get_url_of_object(object)
 
     def get_url_of_model(self, model):
-        views = self.meta.views
+        views = self.views
+        view = views.get_view_of_model(model)
+        return view.get_model_url()
+
+    @classmethod
+    def get_objects_url(self):
+        return self.get_model_url()
+
+    @classmethod
+    def get_model_url(self):
+        return '%s/%s.%s' % (
+            self.base_url,
+            self.verbose_name_plural,
+            'html'
+        )
+
+    @classmethod
+    def get_models_url(self):
+        return '%s/' % self.base_url
 
     @classmethod
     def respond(
@@ -314,13 +326,16 @@ class ViewBase(OrderedClass):
         pk = None,
         pks = None,
         format = None,
-        more = None,
+        field_name = None,
         responder = None,
         meta_page = None,
     ):
 
         pk, pks = self.normalize_pks(pk, pks)
         responder = self(request, view, pk, pks, format,)
+
+        if field_name is not None:
+            raise NotYetImplemented("Individual field names.")
 
         request.context['view'] = responder
 
@@ -387,7 +402,7 @@ class ViewBase(OrderedClass):
 
     def action_write(self):
         if self._view == 'model':
-            raise NotYetImplemented('write model (try the singular version).')
+            raise NotYetImplemented('write model (try writing the objects individually).')
         elif self._view == 'object':
             try:
                 object = self.get_object()
@@ -407,18 +422,15 @@ class ViewBase(OrderedClass):
                 object = self.model.objects.create(**object)
                 object.save()
                 self._object = object
-            return self.format()
+            return HttpResponseRedirect(self.get_url_of_object(object))
 
     def action_add(self):
         self.authorize_add()
-        if self._view == 'model':
-            raise NotYetImplemented('cannot add object to model (try the singular version).')
-        elif self._view == 'object':
-            object = self.parse_object()
-            object = self.model.objects.create(**object)
-            object.save()
-            self._object = object
-        return self.format()
+        object = self.parse_object()
+        object = self.model.objects.create(**object)
+        object.save()
+        self._object = object
+        return HttpResponseRedirect(self.get_url_of_object(object))
 
     def action_change(self):
         self.authorize_change()
@@ -433,7 +445,7 @@ class ViewBase(OrderedClass):
                     setattr(object, field.attname, updates[field.attname])
             object.save()
             self._object = object
-        return self.format()
+        return HttpResponseRedirect(self.get_url_of_object(object))
 
     def action_delete(self):
         self.authorize_delete()
@@ -441,11 +453,11 @@ class ViewBase(OrderedClass):
             objects = self.get_objects()
             for object in objects:
                 object.delete()
-            return HttpResponse("they're gone", mimetype = 'text/plain')
+            return HttpResponseRedirect(self.get_url_of_model(self.model))
         elif self._view == 'object':
             object = self.get_object()
             object.delete()
-            return HttpResponse("it's gone", mimetype = 'text/plain')
+            return HttpResponseRedirect(self.get_url_of_model(self.model))
 
 
     # FORMAT RESPONSES
@@ -458,7 +470,7 @@ class ViewBase(OrderedClass):
             formatter = self._model_formats_lookup[format]
         elif self._view == 'object':
             if format not in self._object_formats:
-                raise ObjectFormatNotAvailable(format)
+                raise ObjectFormatNotAvailable(format, self._object_formats)
             formatter = self._object_formats_lookup[format]
         content_type = self.negotiate_format_content_type(formatter)
         content = formatter(self._request, self)
@@ -776,12 +788,13 @@ class ViewBase(OrderedClass):
         if 'order' in request.JSON:
             field_names.extend(request.JSON['order'])
 
-        if field_names:
-            field_names = [
-                "__".join(field_name.split('.'))
-                for field_name in field_names
-            ]
-            objects = objects.order_by(*field_names)
+        field_names.append(self.model._meta.pk.name)
+
+        field_names = [
+            "__".join(field_name.split('.'))
+            for field_name in field_names
+        ]
+        objects = objects.order_by(*field_names)
 
         return objects
 
@@ -790,7 +803,7 @@ class ViewBase(OrderedClass):
 
     def authorize_read(self):
         request = self._request
-        if getattr(self.meta, 'insecure', False):
+        if self.insecure:
             return True
         if hasattr(self.model._meta, 'get_read_permission'):
             if not user.is_authenticated():
@@ -811,7 +824,7 @@ class ViewBase(OrderedClass):
 
     def authorize_add(self):
         request = self._request
-        if getattr(self.meta, 'insecure', False):
+        if self.insecure:
             return True
         if not request.user.is_authenticated():
             raise NotAuthenticatedError()
@@ -823,7 +836,7 @@ class ViewBase(OrderedClass):
 
     def authorize_change(self):
         request = self._request
-        if getattr(self.meta, 'insecure', False):
+        if self.insecure:
             return True
         if not request.user.is_authenticated():
             raise NotAuthenticatedError()
@@ -835,7 +848,7 @@ class ViewBase(OrderedClass):
 
     def authorize_delete(self):
         request = self._request
-        if getattr(self.meta, 'insecure', False):
+        if self.insecure:
             return True
         if not request.user.is_authenticated():
             raise NotAuthenticatedError()
@@ -863,30 +876,69 @@ class View(ViewBase):
         abstract = True
 
     # model formats
-    class JsonModelFormat(JsonModelFormat): pass
-    class JsonpModelFormat(JsonpModelFormat): pass
-    class HtmlModelFormat(HtmlModelFormat): pass
-    class BasicHtmlModelFormat(HtmlModelFormat): name = 'basic.html'
-    class RawHtmlModelFormat(RawHtmlModelFormat): pass
-    class UploadHtmlModelFormat(UploadHtmlModelFormat): pass
-    class TextModelFormat(TextModelFormat): pass
-    class TxtModelFormat(TextModelFormat): name = 'txt'
-    class CsvModelFormat(CsvModelFormat): pass
+    class JsonModelFormat(JsonModelFormat):
+        label = 'JSON'
+        description = 'A data serialization format based on JavaScript'
+    class JsonpModelFormat(JsonpModelFormat):
+        label = 'JSONP'
+        description = 'JSON with callbacks for cross domain script injection'
+    class HtmlModelFormat(HtmlModelFormat):
+        label = 'HTML'
+    class BasicHtmlModelFormat(HtmlModelFormat):
+        name = 'basic.html'
+        label = 'Basic HTML'
+        description = 'Normal HTML is often overridden to expose a more focused view; basic HTML hides nothing and exposes nothing extra.'
+    class RawHtmlModelFormat(RawHtmlModelFormat):
+        label = 'Raw HTML'
+        description = 'An HTML fragment for AJAX or proxies'
+    class UploadHtmlModelFormat(UploadHtmlModelFormat):
+        label = 'Upload'
+    class TextModelFormat(TextModelFormat):
+        label = 'Formatted Text (<tt>text</tt>)'
+    class TxtModelFormat(TextModelFormat):
+        name = 'txt'
+        label = 'Formatted Text (<tt>txt</tt>)'
+    class CsvModelFormat(CsvModelFormat):
+        label = 'Comma Separated Values Spreadsheet'
     try:
-        class XlsModelFormat(XlsModelFormat): pass
+        class XlsModelFormat(XlsModelFormat):
+            label = 'Excel Spreadsheet'
     except NameError:
          pass
 
     # object formats
-    class HtmlObjectFormat(HtmlObjectFormat): pass
-    class BasicHtmlObjectFormat(HtmlObjectFormat): name = 'basic.html'
+    class HtmlObjectFormat(HtmlObjectFormat):
+        label = 'HTML'
+    class BasicHtmlObjectFormat(HtmlObjectFormat):
+        name = 'basic.html'
+        label = 'Basic HTML'
+        description = 'Normal HTML is often overridden to expose a more focused view; basic HTML hides nothing and exposes nothing extra.'
+    class RawHtmlObjectFormat(RawHtmlObjectFormat):
+        label = 'Raw HTML'
+        description = 'An HTML fragment for AJAX or proxies'
+    class JsonObjectFormat(JsonObjectFormat):
+        label = 'JSON'
+        description = 'A data serialization format based on JavaScript'
+    class JsonpObjectFormat(JsonpObjectFormat):
+        label = 'JSONP'
+        description = 'JSON with callbacks for cross domain script injection'
+
+    class TextObjectFormat(TextObjectFormat):
+        label = 'Formatted text (<tt>text</tt>)'
+    class TxtObjectFormat(TextObjectFormat):
+        name = 'txt'
+        label = 'Formatted text (<tt>txt</tt>)'
+    class UrlencodedObjectFormat(UrlencodedObjectFormat):
+        label = 'URL encoded data'
+
+    class AddHtmlObjectFormat(AddHtmlObjectFormat): pass
+    class EditHtmlObjectFormat(EditHtmlObjectFormat): pass
+
     class VerifyDeleteHtmlObjectFormat(HtmlObjectFormat):
         name = 'verify-delete.html'
         template = 'djata/object.verify-delete.html'
-    class RawHtmlObjectFormat(RawHtmlObjectFormat): pass
-    class TextObjectFormat(TextObjectFormat): pass
-    class TxtObjectFormat(TextObjectFormat): name = 'txt'
-    class UrlencodedObjectFormat(UrlencodedObjectFormat): pass
+        label = 'Delete&hellip;'
+        is_action = True
 
     # model parsers
     class CsvModelParser(CsvModelParser): pass
@@ -894,7 +946,6 @@ class View(ViewBase):
     # object parsers
     class UrlencodedObjectParser(UrlencodedObjectParser): pass
     class UrlqueryObjectParser(UrlqueryObjectParser): pass
-
 
 class Views(object):
 
@@ -915,10 +966,17 @@ class Views(object):
         self.object_view_names[view] = name
         self.view_of_model[view.model] = view
 
+    def get_view_of_object(self, object):
+        model = object._base_manager.model
+        return self.view_of_model[model]
+
+    def get_view_of_model(self, model):
+        return self.view_of_model[model]
+
     def get_url_of_object(self, object, format = None):
         model = object._base_manager.model
         if model not in self.view_of_model:
-            return '#no-view-of-model'
+            return
         view = self.view_of_model[model]
         index = view.index.value_from_object(object)
         view_name = self.object_view_names[view]
@@ -939,7 +997,7 @@ class Views(object):
         pk = None,
         pks = None,
         format = None,
-        more = None,
+        field_name = None,
         meta_page = None,
     ):
         if view_name is not None:
@@ -959,7 +1017,7 @@ class Views(object):
                     pk = pk,
                     pks = pks,
                     format = format,
-                    more = more,
+                    field_name = field_name,
                     meta_page = meta_page,
                 )
             raise NoSuchViewError(view_name)
@@ -990,27 +1048,48 @@ class Views(object):
     def process_extra(self, request):
         pass
 
-def views_from_models(models, exclude = (), base_url = None):
-    views = Views()
-    for model_name, model in vars(models).items():
-        if model_name in exclude:
-            continue
-        if (
-            not isinstance(model, type) or
-            not issubclass(model, Model)
-        ):
-            continue
-        ViewMetaclass(model_name, (View,), {
-            "Meta": type('Meta', (object,), {
-                "model": model,
-                "views": views,
-                "verbose_name": lower(model_name, '-'),
-                "verbose_name_plural": lower(model_name, '-') + 's',
-                "base_url": base_url,
-            }),
-            "__module__": None
-        })
-    return views
+class ViewsFromModelsMetaclass(type):
+
+    def __init__(self, name, bases, attys):
+        super(ViewsFromModelsMetaclass, self).__init__(name, bases, attys)
+        if self.__module__ == ViewsFromModelsMetaclass.__module__:
+            return
+        self.module = self.get_module()
+        self.exclude = getattr(self, 'exclude', set())
+        models = self.models = self.module.models
+        views = self.module.views = self()
+        views.init_views_from_models()
+
+    def get_module(self):
+        # discover the module that contains the model view
+        if self.__module__ is None:
+            return
+        return __import__(
+            self.__module__,
+            {}, {}, [self.__name__]
+        )
+
+class ViewsFromModels(Views):
+    __metaclass__ = ViewsFromModelsMetaclass
+
+    def init_views_from_models(self):
+        for model_name, model in vars(self.models).items():
+            if model_name in self.exclude:
+                continue
+            if (
+                not isinstance(model, type) or
+                not issubclass(model, Model)
+            ):
+                continue
+            ViewMetaclass(model_name, (View,), {
+                "Meta": type('Meta', (object,), {
+                    "model": model,
+                    "views": self,
+                    "verbose_name": lower(model_name, '-'),
+                    "verbose_name_plural": lower(model_name, '-') + 's',
+                }),
+                "__module__": self.__module__
+            })
 
 class Url(object):
 
@@ -1083,7 +1162,7 @@ def respond_kws(
     pk = None,
     pks = None,
     format = None,
-    more = None,
+    field_name = None,
     meta_page = None,
 ):
 
@@ -1096,7 +1175,7 @@ def respond_kws(
         pk = pk,
         pks = pks,
         format = format,
-        more = more,
+        field_name = field_name,
         meta_page = meta_page,
         context = context,
         JSON = {},
@@ -1128,7 +1207,7 @@ def respond_kws(
                 pk = pk,
                 pks = pks,
                 format = format,
-                more = more,
+                field_name = field_name,
                 meta_page = meta_page,
             )
         except Exception, exception:

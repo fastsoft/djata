@@ -100,6 +100,14 @@ def first(elements):
     elements = iter(elements)
     return elements.next()
 
+def unique(elements):
+    visited = set()
+    for element in elements:
+        if element in visited:
+            continue
+        visited.add(element)
+        yield element
+
 if __name__ == '__main__':
     assert all(int(a) == b for a, b in respective(['0', '1', '2'], range(10)))
     assert all(eq([a, b, c]) for a, (b, c) in enumerate(enumerate(range(10))))

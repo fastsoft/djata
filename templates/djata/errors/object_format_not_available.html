@@ -1,5 +1,11 @@
 {% extends "djata/errors/base.html" %}
 {% block explanation %}
 <p>This object cannot provide data in the
-requested, "<tt>{{error|escape}}</tt>", format.</p>
+requested, "<tt>{{error.format|escape}}</tt>", format.</p>
+<p>Valid formats are:</p>
+<ul>
+{% for format in error.formats %}
+    <li><a href="{{url.format}}={{format}}">{{format}}</a></li>
+{% endfor %}
+</ul>
 {% endblock %}

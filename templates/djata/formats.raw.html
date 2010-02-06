@@ -1,0 +1,23 @@
+
+{% if formats %}
+<li>
+    Available formats:
+    <ul class="formats">
+    {% for format in formats %}
+        <li><a href="{{url.format}}={{format.name}}" {% if format.description %}title="{{format.description|safe}}"{% endif %}>{{format.label|safe}}</a></li>
+    {% endfor %}
+    </ul>
+</li>
+{% endif %}
+
+{% if actions %}
+<li>
+    Available actions:
+    <ul class="actions">
+    {% for format in actions %}
+        <li><a href="{{url.format}}={{format.name}}"{% if format.description %} title="{{format.description|safe}}"{% endif %}>{{format.label|safe}}</a></li>
+    {% endfor %}
+    </ul>
+</li>
+{% endif %}
+

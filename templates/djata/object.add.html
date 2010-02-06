@@ -1,0 +1,21 @@
+{% extends "djata/style.html" %}
+{% block content %}
+<div class="content">
+
+    <h1>Add {{view.verbose_name|title}}</h1>
+
+    <form method="post" enctype="application/x-www-form-urlencoded" action="{{url.action}}=add">
+
+        <table border="1" class="form">
+            {{form}}
+        </table>
+
+        <p>
+            <input type="submit" value="Save">
+            <a href="{{url.format}}=html">Cancel</a>
+        </p>
+
+    </form>
+
+</div>
+{% endblock %}

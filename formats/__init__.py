@@ -20,6 +20,12 @@ class Format(OrderedClass):
             name = self.name
         return name, self(view, name)
 
+    @property
+    def label(self):
+        return self.name
+
+    description = ''
+
 class ModelFormat(Format): pass
 class ObjectFormat(Format): pass
 
@@ -76,10 +82,11 @@ class ModelParser(Parser): pass
 class ObjectParser(Parser): pass
 
 
-from djata.formats.format_json import JsonModelFormat, JsonpModelFormat
+from djata.formats.format_json import JsonObjectFormat, JsonModelFormat, JsonpObjectFormat, JsonpModelFormat
 from djata.formats.format_text import TextModelFormat, TextObjectFormat
 from djata.formats.format_html import \
      HtmlObjectFormat, HtmlModelFormat,\
+     EditHtmlObjectFormat, AddHtmlObjectFormat, \
      RawHtmlObjectFormat, RawHtmlModelFormat,\
      UploadHtmlModelFormat
 from djata.formats.format_csv import CsvModelFormat, CsvModelParser

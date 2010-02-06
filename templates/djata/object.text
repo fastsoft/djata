@@ -1,2 +1,2 @@
-{% for item in items %}{{item.0}}: {{item.1|default_if_none:""}}
+{% for item in items %}{{item.0|safe}}: {{item.1|default_if_none:""|safe}}
 {% endfor %}

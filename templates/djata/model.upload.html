@@ -1,7 +1,9 @@
 {% extends "djata/base.html" %}
 {% block content %}
-    <input type="file" name="file">
+<div class="content">
+    <h1>Upload {{view.verbose_name_plural|title}}</h1>
     <form action="{{url.action}}=write" name="format">
+        <input type="file" name="file">
         <select name="format">
         {% for format in formats %}
             <option value="{{format|escape}}">
@@ -9,6 +11,7 @@
             </option>
         {% endfor %}
         </select>
+        <p><input type="submit" value="Upload"> <a href="{{url.format}}=html">Cancel</a></p>
     </form>
-    <input type="submit" value="Upload">
+</div>
 {% endblock %}

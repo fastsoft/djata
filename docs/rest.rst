@@ -120,11 +120,13 @@ together::
 
 At the time of this writing, ``page_length`` and ``page_number`` are broken.
 
-- ``indent`` (not yet implemented)
+``indent`` enables JSON visual indentation with the given tab stop width.
 
-- ``use_nan`` (not yet implemented)
+``allow_nan`` enables the use of ``NaN``, ``Infinity`` and ``-Infinity`` for
+the corresponding numeric values instead of ``null``.  These values are beyond
+the JSON standard.
 
-- ``compact`` (not yet implemented)
+``compact`` expresses JSON without spaces after delimiters.
 
 Conf File Formatting
 --------------------

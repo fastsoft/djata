@@ -1,6 +1,14 @@
 
 from djata.formats import TemplateFormat, ModelFormat, ObjectFormat, ObjectPage
+from django.forms import ModelForm
 from django.db.models import ForeignKey
+
+def form_for_model(model):
+    return type(model.__class__.__name__ + 'Form', (ModelForm,), {
+        "Meta": type("Meta", (object,), {
+            "model": model,
+        })
+    })
 
 class RawHtmlFormat(TemplateFormat):
     name = 'raw.html'
@@ -12,6 +20,7 @@ class HtmlFormat(RawHtmlFormat):
 class RawHtmlObjectFormat(ObjectFormat, RawHtmlFormat):
     template = 'djata/object.raw.html'
     name = 'raw.html'
+    label = 'Raw HTML'
 
     def process(self, request, view):
         context = request.context
@@ -20,6 +29,7 @@ class RawHtmlObjectFormat(ObjectFormat, RawHtmlFormat):
         parent_fields = None # XXX
         child_fields = view.get_child_fields()
         related_fields = view.get_related_fields()
+        context['view'] = view
         context['object'] = object
         context['fields'] = fields
         context['related_fields'] = related_fields
@@ -56,10 +66,27 @@ class RawHtmlObjectFormat(ObjectFormat, RawHtmlFormat):
 class HtmlObjectFormat(RawHtmlObjectFormat):
     template = 'djata/object.html'
     name = 'html'
+    label = 'HTML'
+
+    def process(self, request, view):
+        formats = [
+            view._object_formats_lookup[name]
+            for name in view._object_formats
+        ]
+        request.context['formats'] = [
+            format for format in formats
+            if not getattr(format, 'is_action', False)
+        ]
+        request.context['actions'] = [
+            format for format in formats
+            if getattr(format, 'is_action', False)
+        ]
+        return super(HtmlObjectFormat, self).process(request, view)
 
 class RawHtmlModelFormat(ModelFormat, HtmlFormat):
     template = 'djata/model.raw.html'
     name = 'raw.html'
+    label = 'Raw HTML'
 
     def process(self, request, view):
         context = request.context
@@ -81,38 +108,54 @@ class RawHtmlModelFormat(ModelFormat, HtmlFormat):
 
 class HtmlModelFormat(RawHtmlModelFormat):
     name = 'html'
+    label = 'HTML'
     template = 'djata/model.html'
+
+    def process(self, request, view):
+        formats = [
+            view._model_formats_lookup[name]
+            for name in view._model_formats
+        ]
+        request.context['formats'] = [
+            format for format in formats
+            if not getattr(format, 'is_action', False)
+        ]
+        request.context['actions'] = [
+            format for format in formats
+            if getattr(format, 'is_action', False)
+        ]
+        return super(HtmlModelFormat, self).process(request, view)
+
 
 class UploadHtmlModelFormat(ModelFormat, TemplateFormat):
     template = 'djata/model.upload.html'
     name = 'upload.html'
+    label = 'Upload'
     content_type = 'text/html'
+    is_action = True
     def process(self, request, view):
         request.context['formats'] = view._model_parsers
 
-class HtmlAddPageMetaclass(getattr(ObjectPage, '__metaclass__', type)):
-    def __init__(self, name, bases, attys):
-        super(HtmlAddPageMetaclass, self).__init__(name, bases, attys)
-
-class HtmlAddPage(ObjectPage):
-    __metaclass__ = HtmlAddPageMetaclass
-    name = 'add.html'
-    template = 'djata/form.html'
-    def process(self, request, view):
-        context = request.context
-        from django.forms import form_for_model
-        context['form'] = form_for_model(view.meta.model)()
-        super(HtmlAddPage, self).process(request, view)
-
-class HtmlChangePage(ObjectPage):
+class EditHtmlObjectFormat(HtmlObjectFormat):
+    template = 'djata/object.edit.html'
     name = 'edit.html'
-    template = 'djata/form.html'
+    label = 'Edit'
+    is_action = True
     def process(self, request, view):
-        context = request.context
         object = view.get_object()
-        from django.forms import form_for_model
-        context['form'] = form_for_model(view.meta.model)(instance = object)
-        super(HtmlAddFormat, self).process(request, view)
+        Form = form_for_model(view.model)
+        request.context['form'] = Form(instance = object)
+        super(EditHtmlObjectFormat, self).process(request, view)
+
+class AddHtmlObjectFormat(HtmlModelFormat):
+    template = 'djata/object.add.html'
+    name = 'add.html'
+    label = 'Add'
+    is_action = True
+    def process(self, request, view):
+        Form = form_for_model(view.model)
+        request.context['form'] = Form()
+        super(AddHtmlObjectFormat, self).process(request, view)
 
 def cell(field, object, view):
     value = get_object_field_value(object, field)
